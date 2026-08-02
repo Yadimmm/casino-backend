@@ -1,0 +1,11 @@
+.env
+node_modules/
+*.log
+.claude/
+.windsurf/
+.agents/
+.vscode/
+.claude/
+.windsurf/
+.agents/
+.vscode/

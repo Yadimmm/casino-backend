@@ -1,0 +1,275 @@
+// ============================================================
+//  CASINO ZERO TRUST — Esquema espejo (copia local de desarrollo)
+//  Traducido del diagrama de la encargada de BD.
+//  Fuente de verdad: el schema.prisma oficial de ella.
+//  Este archivo existe solo para probar el backend mientras tanto.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+}
+
+// ---------- PERSONAS REALES ----------
+
+model Participante {
+  id            String    @id @default(uuid())
+  codigoPublico String    @unique @default(uuid()) @map("codigo_publico")
+  alias         String
+  rangoEdad     String    @map("rango_edad")
+  estado        String
+  creadoAt      DateTime  @default(now()) @map("creado_at")
+  anonimizadoAt DateTime? @map("anonimizado_at")
+
+  cuentas  Cuenta[]
+  sesiones Sesion[]
+
+  @@map("participantes")
+}
+
+model Cuenta {
+  id             String    @id @default(uuid())
+  participanteId String    @unique @map("participante_id")
+  emailHash      String    @unique @map("email_hash")
+  passwordHash   String    @map("password_hash")
+  rol            String
+  activa         Boolean   @default(true)
+  ultimoAccesoAt DateTime? @map("ultimo_acceso_at")
+  creadoAt       DateTime  @default(now()) @map("creado_at")
+
+  participante Participante @relation(fields: [participanteId], references: [id], onDelete: Cascade)
+  sesiones     Sesion[]
+
+  @@map("cuentas")
+}
+
+// ---------- IDENTIFICACIÓN PASIVA (tu hacking ético) ----------
+
+model Huella {
+  id            String   @id @default(uuid())
+  hashHuella    String   @unique @map("hash_huella")
+  canvasHash    String   @map("canvas_hash")
+  gpuWebgl      String   @map("gpu_webgl")
+  resolucion    String
+  zonaHoraria   String   @map("zona_horaria")
+  visitas       Int      @default(1)
+  creadoAt      DateTime @default(now()) @map("creado_at")
+  actualizadoAt DateTime @updatedAt @map("actualizado_at")
+
+  sesiones Sesion[]
+
+  @@map("huellas")
+}
+
+// ---------- SESIÓN: EL PUNTO DE UNIÓN ----------
+
+model Sesion {
+  id                 String    @id @default(uuid())
+  participanteId     String    @map("participante_id")
+  cuentaId           String    @map("cuenta_id")
+  huellaId           String    @map("huella_id")
+  estado             String
+  versionLaboratorio String    @map("version_laboratorio")
+  userAgent          String    @map("user_agent")
+  ipHash             String?   @map("ip_hash")
+  ciudadIp           String?   @map("ciudad_ip")
+  iniciadaAt         DateTime  @default(now()) @map("iniciada_at")
+  finalizadaAt       DateTime? @map("finalizada_at")
+
+  participante Participante @relation(fields: [participanteId], references: [id], onDelete: Cascade)
+  cuenta       Cuenta       @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  huella       Huella       @relation(fields: [huellaId], references: [id], onDelete: Restrict)
+
+  datosPasivos    DatoPasivo[]
+  permisos        Permiso[]
+  consentimientos Consentimiento[]
+  cookies         CookieLaboratorio[]
+  resultados      ResultadoJuego[]
+  respuestas      RespuestaConcientizacion[]
+  eventos         EventoNavegador[]
+
+  @@map("sesiones")
+}
+
+// ---------- DATOS PASIVOS (tu hacking ético) ----------
+
+model DatoPasivo {
+  id          String   @id @default(uuid())
+  sesionId    String   @map("sesion_id")
+  categoria   String
+  clave       String
+  valor       String
+  capturadoAt DateTime @default(now()) @map("capturado_at")
+
+  sesion Sesion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+
+  @@unique([sesionId, clave]) // UQ compuesta: una señal, una fila por sesión
+  @@map("datos_pasivos")
+}
+
+// ---------- PERMISOS (tu métrica estrella) ----------
+
+model Permiso {
+  id           String    @id @default(uuid())
+  sesionId     String    @map("sesion_id")
+  juegoId      String?   @map("juego_id")
+  tipo         String
+  estado       String
+  msDecision   Int?      @map("ms_decision") // NULL a propósito: sin DEFAULT 0
+  respondidoAt DateTime? @map("respondido_at")
+  solicitadoAt DateTime  @default(now()) @map("solicitado_at")
+
+  sesion Sesion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  juego  Juego? @relation(fields: [juegoId], references: [id], onDelete: SetNull)
+
+  @@map("permisos")
+}
+
+// ---------- CONSENTIMIENTOS ----------
+
+model Consentimiento {
+  id           String    @id @default(uuid())
+  sesionId     String    @unique @map("sesion_id")
+  versionAviso String    @map("version_aviso")
+  aceptado     Boolean
+  alcance      Json
+  msDecision   Int?      @map("ms_decision")
+  respondidoAt DateTime  @map("respondido_at")
+  revocadoAt   DateTime? @map("revocado_at")
+
+  sesion Sesion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+
+  @@map("consentimientos")
+}
+
+// ---------- CASINO ----------
+
+model Juego {
+  id                     String   @id @default(uuid())
+  slug                   String   @unique
+  nombre                 String
+  descripcion            String
+  tecnologiaDemo         String   @map("tecnologia_demo")
+  instruccionesSeguridad String   @map("instrucciones_seguridad")
+  activo                 Boolean  @default(true)
+  orden                  Int      @db.SmallInt
+  creadoAt               DateTime @default(now()) @map("creado_at")
+
+  permisos    Permiso[]
+  cookies     CookieLaboratorio[]
+  resultados  ResultadoJuego[]
+  respuestas  RespuestaConcientizacion[]
+  eventos     EventoNavegador[]
+
+  @@map("juegos")
+}
+
+model CookieLaboratorio {
+  id           String    @id @default(uuid())
+  sesionId     String    @map("sesion_id")
+  juegoId      String?   @map("juego_id")
+  nombre       String
+  tipo         String
+  proposito    String
+  valorHash    String    @map("valor_hash")
+  secureFlag   Boolean   @map("secure_flag")
+  httpOnlyFlag Boolean   @map("http_only_flag")
+  sameSite     String    @map("same_site")
+  creadaAt     DateTime  @default(now()) @map("creada_at")
+  expiraAt     DateTime? @map("expira_at")
+  eliminadaAt  DateTime? @map("eliminada_at")
+
+  sesion Sesion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  juego  Juego? @relation(fields: [juegoId], references: [id], onDelete: SetNull)
+
+  @@map("cookies_laboratorio")
+}
+
+model ResultadoJuego {
+  id           String    @id @default(uuid())
+  sesionId     String    @map("sesion_id")
+  juegoId      String    @map("juego_id")
+  puntaje      Int
+  completado   Boolean   @default(false)
+  metricas     Json
+  iniciadoAt   DateTime  @default(now()) @map("iniciado_at")
+  completadoAt DateTime? @map("completado_at")
+
+  sesion Sesion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  juego  Juego  @relation(fields: [juegoId], references: [id], onDelete: Restrict)
+
+  @@unique([sesionId, juegoId]) // UQ compuesta: un resultado por juego por sesión
+  @@map("resultados_juego")
+}
+
+// ---------- MOTOR EDUCATIVO ----------
+
+model CatalogoRiesgo {
+  id            String   @id @default(uuid())
+  codigo        String   @unique
+  categoria     String
+  nivel         String
+  titulo        String
+  descripcion   String
+  recomendacion String
+  activo        Boolean  @default(true)
+  creadoAt      DateTime @default(now()) @map("creado_at")
+
+  respuestas RespuestaConcientizacion[]
+
+  @@map("catalogo_riesgos")
+}
+
+model RespuestaConcientizacion {
+  id             String   @id @default(uuid())
+  sesionId       String   @map("sesion_id")
+  juegoId        String?  @map("juego_id")
+  riesgoId       String   @map("riesgo_id")
+  preguntaCodigo String   @map("pregunta_codigo")
+  respuesta      String
+  esCorrecta     Boolean  @map("es_correcta")
+  respondidoAt   DateTime @default(now()) @map("respondido_at")
+
+  sesion Sesion         @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  juego  Juego?         @relation(fields: [juegoId], references: [id], onDelete: SetNull)
+  riesgo CatalogoRiesgo @relation(fields: [riesgoId], references: [id], onDelete: Restrict)
+
+  @@unique([sesionId, riesgoId, preguntaCodigo]) // UQ compuesta
+  @@map("respuestas_concientizacion")
+}
+
+// ---------- BITÁCORA ----------
+
+model EventoNavegador {
+  id         String   @id @default(uuid())
+  sesionId   String   @map("sesion_id")
+  juegoId    String?  @map("juego_id")
+  tipoEvento String   @map("tipo_evento")
+  detalle    Json
+  ocurridoAt DateTime @default(now()) @map("ocurrido_at")
+
+  sesion Sesion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  juego  Juego? @relation(fields: [juegoId], references: [id], onDelete: SetNull)
+
+  @@map("eventos_navegador")
+}
+
+// ---------- AUDITORÍA ----------
+
+model AuditoriaAcceso {
+  id            String   @id @default(uuid())
+  cuentaActorId String?  @map("cuenta_actor_id")
+  accion        String
+  entidad       String
+  registroId    String?  @map("registro_id")
+  datosAntes    Json?    @map("datos_antes")
+  datosDespues  Json?    @map("datos_despues")
+  ipHash        String?  @map("ip_hash")
+  ocurridoAt    DateTime @default(now()) @map("ocurrido_at")
+
+  @@map("auditoria_accesos")
+}
