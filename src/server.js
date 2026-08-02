@@ -20,7 +20,7 @@ app.use(helmet());
 
 // Capa 2: quién puede llamar a la API
 app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:5173'],
+  origin: ['http://localhost:3001', 'http://localhost:5173','https://casino-frontend-seven-peach.vercel.app',],
   credentials: true,
 }));
 
