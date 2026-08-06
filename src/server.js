@@ -11,6 +11,7 @@ import { arcoRouter } from './routes/arco.routes.js';
 import { eventoRouter } from './routes/evento.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { publicoRouter } from './routes/publico.routes.js';
+import cookieParser from 'cookie-parser';
 const app = express();
 
 // ===== MIDDLEWARES (preparan la petición) =====
@@ -34,7 +35,8 @@ app.use(rateLimit({
 
 // Capa 4: leer JSON del cuerpo (DEBE ir antes de las rutas)
 app.use(express.json({ limit: '64kb' }));
-
+// Capa 5: leer cookies (para el token httpOnly)
+app.use(cookieParser());
 // ===== RUTAS (usan lo que los middlewares prepararon) =====
 
 app.get('/api/salud', (req, res) => {

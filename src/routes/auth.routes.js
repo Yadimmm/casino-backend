@@ -159,6 +159,15 @@ authRouter.post('/auth/login', async (req, res) => {
       participanteId: cuenta.participanteId,
     });
 
+    // Enviar el token también como cookie httpOnly (protección contra robo por XSS)
+    const esProd = process.env.NODE_ENV === 'production';
+    res.cookie('token', token, {
+      httpOnly: true,                       // JavaScript NO puede leerla
+      secure: esProd,                       // requiere HTTPS en producción
+      sameSite: esProd ? 'none' : 'lax',    // cross-domain en producción
+      maxAge: 2 * 60 * 60 * 1000,           // 2 horas (igual que el JWT)
+    });
+
     return res.json({
       token,
       participante: {

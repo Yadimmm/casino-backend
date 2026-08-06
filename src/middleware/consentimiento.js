@@ -5,15 +5,28 @@ export async function exigirConsentimiento(req, res, next) {
   try {
     let sesionId = null;
 
-    // Opción 1: token JWT en Authorization: Bearer (lo que manda el frontend)
-    const authHeader = req.get('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7); // quita "Bearer "
+    // Opción 0: token JWT en cookie httpOnly (método seguro, no accesible por JS)
+    const tokenCookie = req.cookies?.token;
+    if (tokenCookie) {
       try {
-        const payload = verificarToken(token);
+        const payload = verificarToken(tokenCookie);
         sesionId = payload.sesionId;
       } catch {
-        return res.status(401).json({ error: 'token_invalido' });
+        // cookie inválida o expirada: seguimos a las otras opciones
+      }
+    }
+
+    // Opción 1: token JWT en Authorization: Bearer (lo que manda el frontend actual)
+    if (!sesionId) {
+      const authHeader = req.get('Authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7); // quita "Bearer "
+        try {
+          const payload = verificarToken(token);
+          sesionId = payload.sesionId;
+        } catch {
+          return res.status(401).json({ error: 'token_invalido' });
+        }
       }
     }
 
