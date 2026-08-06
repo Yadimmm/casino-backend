@@ -16,7 +16,7 @@ authRouter.post('/auth/registro', async (req, res) => {
     if (!alias || typeof alias !== 'string' || alias.trim().length === 0) {
       return res.status(400).json({ error: 'alias_invalido' });
     }
-    if (!correo || !correo.includes('@')) {
+    if (!correo || typeof correo !== 'string' || !correo.includes('@')) {
       return res.status(400).json({ error: 'correo_invalido' });
     }
     if (!contrasena || contrasena.length < 6) {
@@ -90,8 +90,14 @@ authRouter.post('/auth/login', async (req, res) => {
   try {
     const { correo, contrasena, perfil } = req.body;
 
-    if (!correo || !contrasena) {
-      return res.status(400).json({ error: 'credenciales_incompletas' });
+    // Validar que sean texto (previene error 500 e inyecciones NoSQL)
+    if (
+      typeof correo !== 'string' ||
+      typeof contrasena !== 'string' ||
+      correo.length === 0 ||
+      contrasena.length === 0
+    ) {
+      return res.status(400).json({ error: 'credenciales_invalidas' });
     }
 
     const emailHash = hashearEmail(correo);

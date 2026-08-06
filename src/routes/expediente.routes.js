@@ -19,21 +19,31 @@ expedienteRouter.get('/expediente', async (req, res) => {
     // 3. Cruzar: por cada dato capturado, buscar su riesgo
     const hallazgos = [];
     for (const dato of datosPasivos) {
-      // clave "webgl.gpu" → código "webgl-gpu"
       const codigo = dato.clave.replaceAll('.', '-');
       const riesgo = catalogo.find((r) => r.codigo === codigo);
 
-      if (riesgo) {
-        hallazgos.push({
-          dato: dato.clave,
-          valorCapturado: dato.valor,
-          titulo: riesgo.titulo,
-          nivel: riesgo.nivel,
-          explicacion: riesgo.descripcion,
-          recomendacion: riesgo.recomendacion,
-        });
-      }
-    }
+    if (riesgo) {
+    // Dato CON riesgo identificado
+    hallazgos.push({
+      dato: dato.clave,
+      valorCapturado: dato.valor,
+      titulo: riesgo.titulo,
+      nivel: riesgo.nivel,
+      explicacion: riesgo.descripcion,
+      recomendacion: riesgo.recomendacion,
+    });
+    } else {
+    // Dato SIN riesgo en el catálogo (se muestra, pero como "ninguno")
+    hallazgos.push({
+      dato: dato.clave,
+      valorCapturado: dato.valor,
+      titulo: dato.clave,
+      nivel: 'ninguno',
+      explicacion: 'Dato capturado sin riesgo identificado.',
+      recomendacion: null,
+    });
+  }
+}
 
     // 4. Contar por nivel de riesgo
     const resumen = {
